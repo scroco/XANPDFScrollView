@@ -11,3 +11,8 @@ p. iOS 4.0+
 h2. How to use it in your project
 
 p. Open the project to see example.
+
+h2. TODO
+
+* Smoother bounce zooming
+* Detect links
