@@ -1,0 +1,8 @@
+//
+// Prefix header for all source files of the 'XANPDFScrollView' target in the 'XANPDFScrollView' project
+//
+
+#ifdef __OBJC__
+    #import <Foundation/Foundation.h>
+    #import <UIKit/UIKit.h>
+#endif
