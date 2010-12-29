@@ -38,11 +38,11 @@
   [super viewDidLoad];
   NSURL *url = [NSURL fileURLWithPath:[[NSBundle mainBundle] pathForResource:@"Africa" ofType:@"pdf"]];
   CGPDFDocumentRef doc = CGPDFDocumentCreateWithURL((CFURLRef)url);
-  CGPDFPageRef page = CGPDFDocumentGetPage(doc, 1);
   scrollView = [[XANPDFScrollView alloc] initWithFrame:self.view.bounds];
   scrollView.autoresizesSubviews = YES;
   scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  scrollView.page = page;
+  scrollView.doc = doc;
+  CGPDFDocumentRelease(doc);
   [self.view addSubview:scrollView];
   [scrollView release];
   UIBarButtonItem *rightBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"crop"] style:UIBarButtonItemStyleBordered target:self action:@selector(crop:)];

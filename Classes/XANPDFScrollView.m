@@ -228,21 +228,38 @@ trimmedRectWithImage(UIImage *img)
 
 @implementation XANPDFScrollView
 
-@synthesize page;
 @synthesize cropsWhitespace;
+@synthesize doc, pageNumber;
+
+// You must ensure theDoc is not NULL
+- (void)setDoc:(CGPDFDocumentRef)theDoc
+{
+  CGPDFDocumentRef tmp = CGPDFDocumentRetain(theDoc);
+  CGPDFDocumentRelease(doc);
+  doc = tmp;
+  
+  self.pageNumber = 1;
+}
+
+- (void)setPageNumber:(size_t)number
+{
+  pageNumber = number;
+
+  CGPDFPageRelease(page);
+  page = CGPDFPageRetain(CGPDFDocumentGetPage(doc, pageNumber));
+  
+  pageRect = cropsWhitespace 
+    ? [self croppedRect] 
+    : CGPDFPageGetBoxRect(page, kCGPDFCropBox);
+  imageView.image = cropsWhitespace 
+    ? [self croppedPageImage]
+    : [self pageImage];
+  [self updateLayout];
+}
 
 - (void)setCropsWhitespace:(BOOL)crops
 {
   cropsWhitespace = crops;
-  [self updateLayout];
-}
-
-- (void)setPage:(CGPDFPageRef)thePage
-{
-  CGPDFPageRef tmp = CGPDFPageRetain(thePage);
-  CGPDFPageRelease(page);
-  page = tmp;
-  
   [self updateLayout];
 }
 
@@ -272,7 +289,9 @@ trimmedRectWithImage(UIImage *img)
 
 - (void)dealloc
 {
+  CGPDFDocumentRelease(doc);
   CGPDFPageRelease(page);
+  
   [super dealloc];
 }
 
@@ -280,6 +299,8 @@ trimmedRectWithImage(UIImage *img)
 
 - (void)layoutSubviews
 {
+  if (!page) return;
+  
   [super layoutSubviews];
   CGSize boundsSize = self.bounds.size;
   CGRect frameToCenter = tiledView.frame;
@@ -346,15 +367,10 @@ trimmedRectWithImage(UIImage *img)
 // Need to call while view controller willAnimateRotationToInterfaceOrientation:duration:
 - (void)updateLayout
 {
+  if (!page || self.bounds.size.width == 0.0) return;
+  
   [oldTiledView removeFromSuperview];
   oldTiledView = nil;
-  
-  pageRect = cropsWhitespace 
-    ? [self croppedRect] 
-    : CGPDFPageGetBoxRect(page, kCGPDFCropBox);
-  imageView.image = cropsWhitespace 
-    ? [self croppedPageImage]
-    : [self pageImage];
   
   CGSize pageSize = pageRect.size;
   CGSize finalSize = self.bounds.size;
@@ -374,11 +390,13 @@ trimmedRectWithImage(UIImage *img)
   }
   
   initialScale = finalSize.width / pageSize.width;
+
   if (currentScale < initialScale){
     currentScale = initialScale;
     self.maximumZoomScale = maxScale / currentScale;
     self.minimumZoomScale = initialScale / currentScale;
   }
+  
   CGRect rect = pageRect;
   rect.size.width *= currentScale;
   rect.size.height *= currentScale;
