@@ -15,8 +15,9 @@
 	return [CATiledLayer class];
 }
 
-- (id)initWithFrame:(CGRect)frame 
-               page:(CGPDFPageRef)thePage 
+- (id)initWithFrame:(CGRect)frame
+                doc:(CGPDFDocumentRef)theDoc
+         pageNumber:(size_t)thePageNumber
               scale:(CGFloat)theScale
              offset:(CGPoint)theOffset
 {    
@@ -24,8 +25,9 @@
     CATiledLayer *layer = (CATiledLayer *)self.layer;
     layer.levelsOfDetail = 4;
     layer.levelsOfDetailBias = 4;
-    layer.tileSize = CGSizeMake(512.0, 512.0);
-    page = CGPDFPageRetain(thePage);
+    //layer.tileSize = CGSizeMake(512.0, 512.0);
+    doc = CGPDFDocumentRetain(theDoc);
+    pageNumber = thePageNumber;
     scale = theScale;
     offset = theOffset;
   }
@@ -36,7 +38,7 @@
 
 - (void)dealloc
 {
-  CGPDFPageRelease(page);
+  CGPDFDocumentRelease(doc);
 
   [super dealloc];
 }
@@ -55,7 +57,7 @@
 	CGContextTranslateCTM(context, -offset.x*scale, self.bounds.size.height+offset.y*scale);
 	CGContextScaleCTM(context, 1.0, -1.0);
 	CGContextScaleCTM(context, scale, scale);	
-	CGContextDrawPDFPage(context, page);
+	CGContextDrawPDFPage(context, CGPDFDocumentGetPage(doc, pageNumber));
 	CGContextRestoreGState(context);
 }
 

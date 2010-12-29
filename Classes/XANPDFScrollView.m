@@ -299,9 +299,9 @@ trimmedRectWithImage(UIImage *img)
 
 - (void)layoutSubviews
 {
-  if (!page) return;
-  
   [super layoutSubviews];
+  if (!page || !tiledView) return;
+  
   CGSize boundsSize = self.bounds.size;
   CGRect frameToCenter = tiledView.frame;
   
@@ -404,7 +404,7 @@ trimmedRectWithImage(UIImage *img)
   self.contentSize = rect.size;
   
   [tiledView removeFromSuperview];
-  tiledView = [[XANPDFTiledView alloc] initWithFrame:rect page:page scale:currentScale offset:pageRect.origin];
+  tiledView = [[XANPDFTiledView alloc] initWithFrame:rect doc:doc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
   [self addSubview:tiledView];
   [tiledView release];
   
@@ -444,7 +444,7 @@ trimmedRectWithImage(UIImage *img)
 	r.size.width *= currentScale;
   r.size.height *= currentScale;
 	
-  tiledView = [[XANPDFTiledView alloc] initWithFrame:r page:page scale:currentScale offset:pageRect.origin];
+  tiledView = [[XANPDFTiledView alloc] initWithFrame:r doc:doc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
 	
 	[self addSubview:tiledView];
   [tiledView release];
