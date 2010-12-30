@@ -41,7 +41,7 @@
   scrollView = [[XANPDFScrollView alloc] initWithFrame:self.view.bounds];
   scrollView.autoresizesSubviews = YES;
   scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  scrollView.doc = doc;
+  scrollView.PDFDoc = doc;
   CGPDFDocumentRelease(doc);
   [self.view addSubview:scrollView];
   [scrollView release];

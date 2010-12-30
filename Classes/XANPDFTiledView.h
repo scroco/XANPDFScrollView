@@ -9,12 +9,12 @@
 #import <UIKit/UIKit.h>
 
 @interface XANPDFTiledView : UIView {
-  CGPDFDocumentRef doc;
+  CGPDFDocumentRef PDFDoc;
   size_t pageNumber;
   CGFloat scale;
   CGPoint offset;
 }
 
-- (id)initWithFrame:(CGRect)frame doc:(CGPDFDocumentRef)doc pageNumber:(size_t)pageNumber scale:(CGFloat)scale offset:(CGPoint)offset;
+- (id)initWithFrame:(CGRect)frame PDFDoc:(CGPDFDocumentRef)PDFDoc pageNumber:(size_t)pageNumber scale:(CGFloat)scale offset:(CGPoint)offset;
 
 @end

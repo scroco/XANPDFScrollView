@@ -23,9 +23,10 @@ typedef struct _CCBitmapData {
 } CCBitmapData;
 
 static inline BOOL 
-differentPixels(const unsigned char *p1, 
-                const unsigned char *p2, 
-                NSUInteger count)
+differentPixels
+(const unsigned char *p1, 
+ const unsigned char *p2, 
+ NSUInteger count)
 {
   NSUInteger i;    
   for (i = 0; i < count; i++) {
@@ -37,10 +38,11 @@ differentPixels(const unsigned char *p1,
 }
 
 static inline void 
-getPixel(CCBitmapData *bitmap, 
-         NSInteger x,
-         NSInteger y,
-         unsigned char pixel[])
+getPixel
+(CCBitmapData *bitmap, 
+ NSInteger x,
+ NSInteger y,
+ unsigned char pixel[])
 {
   NSInteger spp = bitmap->samplesPerPixel;
   unsigned char *ptr = &(bitmap->data[(bitmap->bytesPerRow * y) + (x * spp)]);
@@ -49,14 +51,15 @@ getPixel(CCBitmapData *bitmap,
 }
 
 static BOOL
-isSignificantPixel(CCBitmapData *bitmap,
-                   NSInteger x,
-                   NSInteger y,
-                   NSInteger minX,
-                   NSInteger maxX,
-                   NSInteger minY,
-                   NSInteger maxY,
-                   unsigned char backgroundPixel[])
+isSignificantPixel
+(CCBitmapData *bitmap,
+ NSInteger x,
+ NSInteger y,
+ NSInteger minX,
+ NSInteger maxX,
+ NSInteger minY,
+ NSInteger maxY,
+ unsigned char backgroundPixel[])
 {
   NSInteger i, j, count = 0;
   unsigned char pixel[bitmap->samplesPerPixel];
@@ -229,14 +232,14 @@ trimmedRectWithImage(UIImage *img)
 @implementation XANPDFScrollView
 
 @synthesize cropsWhitespace;
-@synthesize doc, pageNumber;
+@synthesize PDFDoc, pageNumber;
 
 // You must ensure theDoc is not NULL
-- (void)setDoc:(CGPDFDocumentRef)theDoc
+- (void)setPDFDoc:(CGPDFDocumentRef)theDoc
 {
   CGPDFDocumentRef tmp = CGPDFDocumentRetain(theDoc);
-  CGPDFDocumentRelease(doc);
-  doc = tmp;
+  CGPDFDocumentRelease(PDFDoc);
+  PDFDoc = tmp;
   
   self.pageNumber = 1;
 }
@@ -245,21 +248,18 @@ trimmedRectWithImage(UIImage *img)
 {
   pageNumber = number;
 
-  CGPDFPageRelease(page);
-  page = CGPDFPageRetain(CGPDFDocumentGetPage(doc, pageNumber));
-  
-  pageRect = cropsWhitespace 
-    ? [self croppedRect] 
-    : CGPDFPageGetBoxRect(page, kCGPDFCropBox);
-  imageView.image = cropsWhitespace 
-    ? [self croppedPageImage]
-    : [self pageImage];
+  CGPDFPageRelease(PDFPage);
+  PDFPage = CGPDFPageRetain(CGPDFDocumentGetPage(PDFDoc, pageNumber));
+  needsUpdatePage = YES;
+
   [self updateLayout];
 }
 
 - (void)setCropsWhitespace:(BOOL)crops
 {
   cropsWhitespace = crops;
+  needsUpdatePage = YES;
+
   [self updateLayout];
 }
 
@@ -289,8 +289,8 @@ trimmedRectWithImage(UIImage *img)
 
 - (void)dealloc
 {
-  CGPDFDocumentRelease(doc);
-  CGPDFPageRelease(page);
+  CGPDFDocumentRelease(PDFDoc);
+  CGPDFPageRelease(PDFPage);
   
   [super dealloc];
 }
@@ -300,7 +300,7 @@ trimmedRectWithImage(UIImage *img)
 - (void)layoutSubviews
 {
   [super layoutSubviews];
-  if (!page || !tiledView) return;
+  if (!PDFPage || !tiledView) return;
   
   CGSize boundsSize = self.bounds.size;
   CGRect frameToCenter = tiledView.frame;
@@ -315,7 +315,8 @@ trimmedRectWithImage(UIImage *img)
   else 
     frameToCenter.origin.y = 0;
   
-  imageView.hidden = self.zoomBouncing;
+  hasBouncingBeforeEndZooming = self.zoomBouncing;
+  imageView.hidden = hasBouncingBeforeEndZooming;
   imageView.frame = frameToCenter;
   tiledView.frame = frameToCenter;
   tiledView.contentScaleFactor = 1.0;
@@ -325,13 +326,13 @@ trimmedRectWithImage(UIImage *img)
 #pragma mark methods
 - (UIImage *)pageImage
 {
-  CGRect rect = CGPDFPageGetBoxRect(page, kCGPDFCropBox);
+  CGRect rect = CGPDFPageGetBoxRect(PDFPage, kCGPDFCropBox);
   UIGraphicsBeginImageContext(rect.size);
   CGContextRef context = UIGraphicsGetCurrentContext();
   CGContextScaleCTM(context, 1, -1);
   CGContextTranslateCTM(context, 0, -rect.size.height);
   CGContextTranslateCTM(context, -rect.origin.x, -rect.origin.y);
-  CGContextDrawPDFPage(context, page);
+  CGContextDrawPDFPage(context, PDFPage);
   UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
   UIGraphicsEndImageContext();
   
@@ -346,7 +347,7 @@ trimmedRectWithImage(UIImage *img)
   CGContextScaleCTM(context, 1, -1);
   CGContextTranslateCTM(context, 0, -pageRect.size.height);
   CGContextTranslateCTM(context, -pageRect.origin.x, -pageRect.origin.y);
-  CGContextDrawPDFPage(context, page);
+  CGContextDrawPDFPage(context, PDFPage);
   UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
   UIGraphicsEndImageContext();
   
@@ -355,7 +356,7 @@ trimmedRectWithImage(UIImage *img)
 
 - (CGRect)croppedRect
 {
-  CGRect rect = CGPDFPageGetBoxRect(page, kCGPDFCropBox);
+  CGRect rect = CGPDFPageGetBoxRect(PDFPage, kCGPDFCropBox);
   CGRect r = trimmedRectWithImage([self pageImage]);
   r.origin.x += rect.origin.x;
   r.origin.y += rect.origin.y;
@@ -367,10 +368,19 @@ trimmedRectWithImage(UIImage *img)
 // Need to call while view controller willAnimateRotationToInterfaceOrientation:duration:
 - (void)updateLayout
 {
-  if (!page || self.bounds.size.width == 0.0) return;
+  if (!PDFPage || self.bounds.size.width == 0.0) return;
   
   [oldTiledView removeFromSuperview];
   oldTiledView = nil;
+
+  if (needsUpdatePage){
+    pageRect = cropsWhitespace 
+      ? [self croppedRect] 
+      : CGPDFPageGetBoxRect(PDFPage, kCGPDFCropBox);
+    imageView.image = cropsWhitespace 
+      ? [self croppedPageImage]
+      : [self pageImage];
+  }
   
   CGSize pageSize = pageRect.size;
   CGSize finalSize = self.bounds.size;
@@ -404,11 +414,13 @@ trimmedRectWithImage(UIImage *img)
   self.contentSize = rect.size;
   
   [tiledView removeFromSuperview];
-  tiledView = [[XANPDFTiledView alloc] initWithFrame:rect doc:doc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
+  tiledView = [[XANPDFTiledView alloc] initWithFrame:rect PDFDoc:PDFDoc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
   [self addSubview:tiledView];
   [tiledView release];
   
   [self setNeedsLayout];
+
+  needsUpdatePage = NO;
 }
 
 #pragma mark UIScrollViewDelegate
@@ -420,8 +432,12 @@ trimmedRectWithImage(UIImage *img)
 - (void)scrollViewWillBeginZooming:(UIScrollView *)scrollView 
                           withView:(UIView *)view
 {
+  if (hasBouncingBeforeEndZooming){
+    hasBouncingBeforeEndZooming = NO;
+    return;
+  }
+
 	[oldTiledView removeFromSuperview];
-  
 	oldTiledView = tiledView;
 	[self addSubview:oldTiledView];  
 }
@@ -429,7 +445,12 @@ trimmedRectWithImage(UIImage *img)
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView 
                        withView:(UIView *)view 
                         atScale:(float)scale
-{
+{  
+  if (hasBouncingBeforeEndZooming){
+    imageView.hidden = NO;
+    return;
+  }
+
   currentScale *= scale;
 
   if (currentScale > maxScale){
@@ -444,13 +465,12 @@ trimmedRectWithImage(UIImage *img)
 	r.size.width *= currentScale;
   r.size.height *= currentScale;
 	
-  tiledView = [[XANPDFTiledView alloc] initWithFrame:r doc:doc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
-	
+  tiledView = [[XANPDFTiledView alloc] initWithFrame:r PDFDoc:PDFDoc pageNumber:pageNumber scale:currentScale offset:pageRect.origin];
 	[self addSubview:tiledView];
   [tiledView release];
   
   self.maximumZoomScale = maxScale / currentScale;
-  self.minimumZoomScale = initialScale / currentScale;
+  self.minimumZoomScale = initialScale / currentScale;  
 }
 
 #pragma mark -

@@ -10,9 +10,9 @@
 
 @class XANPDFTiledView;
 @interface XANPDFScrollView : UIScrollView <UIScrollViewDelegate> {
-  CGPDFDocumentRef doc;
+  CGPDFDocumentRef PDFDoc;
   size_t pageNumber;
-  CGPDFPageRef page;
+  CGPDFPageRef PDFPage;
   UIImageView *imageView;
   XANPDFTiledView *tiledView;
   XANPDFTiledView *oldTiledView;
@@ -21,9 +21,11 @@
   CGFloat maxScale;
   CGFloat currentScale;
   CGRect pageRect;
+  BOOL hasBouncingBeforeEndZooming;
+  BOOL needsUpdatePage;
 }
 
-@property (nonatomic) CGPDFDocumentRef doc;
+@property (nonatomic) CGPDFDocumentRef PDFDoc;
 @property (nonatomic) size_t pageNumber;
 @property (nonatomic, getter=isCropsWhitespace) BOOL cropsWhitespace;
 
